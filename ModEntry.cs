@@ -14,6 +14,7 @@ namespace SuShiLegend
 
         private NpcManager _npcManager;
         private QuestManager _questManager;
+        private NpcWanderManager _wanderManager;
         private ModData _data;
         private Dictionary<string, string> _dialogues;
 
@@ -22,12 +23,14 @@ namespace SuShiLegend
             Instance = this;
             _npcManager = new NpcManager(helper, Monitor);
             _questManager = new QuestManager(helper, Monitor);
+            _wanderManager = new NpcWanderManager(Monitor);
             LoadDialogues();
 
             helper.Events.GameLoop.SaveLoaded += OnSaveLoaded;
             helper.Events.GameLoop.Saving += OnSaving;
             helper.Events.GameLoop.DayStarted += OnDayStarted;
             helper.Events.GameLoop.TimeChanged += OnTimeChanged;
+            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
             helper.Events.Input.ButtonPressed += OnButtonPressed;
             helper.Events.Content.AssetRequested += OnAssetRequested;
 
@@ -60,6 +63,7 @@ namespace SuShiLegend
 
         private void OnSaving(object sender, SavingEventArgs e)
         {
+            _wanderManager.Clear();
             _npcManager.RemoveAllNpcs();
             if (_data != null)
                 Helper.Data.WriteSaveData("SuShiLegend.SaveData", _data);
@@ -73,12 +77,25 @@ namespace SuShiLegend
             _npcManager.SpawnAllNpcs();
             RefreshAllDialogues();
 
+            // Register all NPCs for wandering near their spawn points
+            _wanderManager.Clear();
+            foreach (var (name, info) in NpcManager.Definitions)
+                _wanderManager.Register(name, info.Tile);
+
             if (!_data.StoneTabletFound)
             {
                 _data.StoneTabletFound = true;
                 Game1.addHUDMessage(new HUDMessage(
                     "你感到一股古老的力量在星露谷中苏醒...三道光影飞向了不同的方向。", 2));
             }
+        }
+
+        private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
+        {
+            if (!Context.IsWorldReady)
+                return;
+
+            _wanderManager.Update(_npcManager);
         }
 
         private void RefreshAllDialogues()

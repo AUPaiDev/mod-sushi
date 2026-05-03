@@ -121,8 +121,8 @@ namespace SuShiLegend.Framework
 
         private void CheckCausewayQuest(ModData modData, NpcManager npcManager)
         {
-            int stone = Game1.player.Items.CountId("(O)390", int.MaxValue);
-            int wood = Game1.player.Items.CountId("(O)388", int.MaxValue);
+            int stone = Game1.player.Items.CountId("(O)390");
+            int wood = Game1.player.Items.CountId("(O)388");
 
             if (stone >= 200 && wood >= 100)
             {
@@ -141,9 +141,9 @@ namespace SuShiLegend.Framework
 
         private void CheckDongpoQuest(ModData modData, NpcManager npcManager)
         {
-            bool hasPork = Game1.player.Items.CountId("(O)184", int.MaxValue) >= 1;
-            bool hasOil = Game1.player.Items.CountId("(O)247", int.MaxValue) >= 1;
-            bool hasSugar = Game1.player.Items.CountId("(O)245", int.MaxValue) >= 1;
+            bool hasPork = Game1.player.Items.CountId("(O)184") >= 1;
+            bool hasOil = Game1.player.Items.CountId("(O)247") >= 1;
+            bool hasSugar = Game1.player.Items.CountId("(O)245") >= 1;
 
             if (hasPork && hasOil && hasSugar)
             {

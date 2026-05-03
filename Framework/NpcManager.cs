@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 using StardewValley;
 
 namespace SuShiLegend.Framework
@@ -13,9 +14,9 @@ namespace SuShiLegend.Framework
 
         private static readonly Dictionary<string, NpcSpawnInfo> NpcDefinitions = new()
         {
-            ["SuShi"] = new("Mountain", new Vector2(25, 16), 2),
-            ["Zhaoyun"] = new("Town", new Vector2(29, 56), 2),
-            ["Foyin"] = new("Forest", new Vector2(28, 14), 2)
+            ["SuShi"] = new("Farm", new Vector2(64, 15), 2),
+            ["Zhaoyun"] = new("Farm", new Vector2(66, 17), 2),
+            ["Foyin"] = new("Farm", new Vector2(62, 17), 2)
         };
 
         public NpcManager(IModHelper helper, IMonitor monitor)
@@ -67,11 +68,8 @@ namespace SuShiLegend.Framework
             var npc = new NPC(
                 sprite,
                 info.Tile * 64f,
-                info.MapName,
                 info.FacingDirection,
-                name,
-                null,
-                portrait
+                name
             );
 
             location.addCharacter(npc);
@@ -99,7 +97,7 @@ namespace SuShiLegend.Framework
             return Game1.getLocationFromName(info.MapName)?.getCharacterFromName(name);
         }
 
-        public void OnAssetRequested(StardewModdingAPI.Events.AssetRequestedEventArgs e)
+        public void OnAssetRequested(AssetRequestedEventArgs e)
         {
             foreach (var name in NpcDefinitions.Keys)
             {
@@ -117,6 +115,9 @@ namespace SuShiLegend.Framework
             }
         }
 
-        private record NpcSpawnInfo(string MapName, Vector2 Tile, int FacingDirection);
+        /// <summary>Expose NPC definitions so the wander manager can read spawn tiles.</summary>
+        public static IReadOnlyDictionary<string, NpcSpawnInfo> Definitions => NpcDefinitions;
+
+        public record NpcSpawnInfo(string MapName, Vector2 Tile, int FacingDirection);
     }
 }
