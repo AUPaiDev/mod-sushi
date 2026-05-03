@@ -1,224 +1,127 @@
 #!/usr/bin/env python3
-"""Generate improved SuShi (苏轼) sprite sheet and portrait for Stardew Valley mod.
+"""Generate SuShi (苏轼) sprite sheet and portrait for Stardew Valley mod.
 
 Su Shi: Northern Song dynasty literary giant, male.
-- Blue scholar robe (蓝色文人长袍)
-- Black scholar cap / Dongpo turban (东坡巾)
-- Beard (胡须)
-- Bamboo walking staff (竹杖)
-- Taller, broader build than Zhaoyun (male proportions)
+- Dongpo turban (东坡巾) — flat-topped rectangular scholar cap, his most iconic feature
+- Blue scholar robe (蓝色文人长袍) with white inner collar
+- Short beard (1-2px hint at chin)
+- Warm skin tone, medium-lean build
+
+Stardew Valley official proportions (16x32 canvas):
+  y0-3:   hat / hair top
+  y4-9:   face (6px tall, ~8-10px wide) — eyes at y6-y7 are THE key feature
+  y10-11: neck / collar
+  y12-19: torso
+  y20-24: lower body
+  y25-27: boots
+  y28-31: empty
 """
 
 from PIL import Image
 
-# === COLOR PALETTE (with hue shifting, light from top-left) ===
+# === COLOR PALETTE (hue-shifted, light from top-left) ===
 T = (0, 0, 0, 0)  # transparent
 
-# Outline colors (colored, not pure black)
-OL_DARK = (20, 18, 30, 255)    # deep blue-black, main outline
-OL_MED  = (35, 32, 42, 255)    # medium outline for inner details
-OL_HAT  = (18, 16, 28, 255)    # very dark for hat outline
+# Outline — deep brown, NOT pure black (Stardew convention)
+OL = (38, 28, 18, 255)     # main outline
+OM = (52, 38, 28, 255)     # medium / inner detail outline
 
-# Skin (warm, top-left lighting — male, slightly darker than Zhaoyun)
-SK_HI  = (248, 216, 192, 255)  # highlight
-SK_BASE = (235, 198, 168, 255) # base
-SK_SH  = (210, 170, 138, 255)  # shadow
-SK_DSH = (185, 140, 112, 255)  # deep shadow
+# Skin — warm, male, top-left lighting
+S0 = (250, 218, 190, 255)  # highlight (top-left lit)
+S1 = (238, 200, 168, 255)  # base
+S2 = (212, 172, 140, 255)  # shadow
+S3 = (188, 145, 115, 255)  # deep shadow
 
-# Hat / hair (black scholar cap — Dongpo turban)
-HT_HI  = (50, 48, 62, 255)    # highlight — slight blue sheen
-HT_BASE = (28, 25, 38, 255)   # base — very dark
-HT_SH  = (18, 15, 25, 255)    # shadow
+# Dongpo turban — blue-black with subtle sheen
+HT0 = (52, 50, 68, 255)    # highlight — faint blue sheen
+HT1 = (30, 28, 42, 255)    # base — very dark
+HT2 = (20, 18, 30, 255)    # shadow
 
-# Blue scholar robe (main clothing)
-CL_HI  = (155, 195, 235, 255) # highlight — light sky blue
-CL_BASE = (110, 155, 205, 255)# base — medium blue
-CL_SH  = (75, 110, 165, 255)  # shadow — deeper blue
-CL_DSH = (50, 78, 130, 255)   # deep shadow — navy
+# Hair (visible at sides of face under turban)
+HR0 = (42, 38, 55, 255)    # highlight
+HR1 = (25, 22, 35, 255)    # base
+HR2 = (18, 15, 25, 255)    # shadow
 
-# Inner robe / collar accent (white-cream)
-IC_HI  = (245, 240, 232, 255) # highlight
-IC_BASE = (228, 220, 208, 255)# base
-IC_SH  = (205, 195, 182, 255) # shadow
+# Blue scholar robe
+C0 = (148, 188, 228, 255)  # highlight — sky blue
+C1 = (108, 152, 202, 255)  # base — medium blue
+C2 = (72, 112, 168, 255)   # shadow — deeper blue
+C3 = (48, 78, 132, 255)    # deep shadow — navy
 
-# Belt / sash (dark brown-gold)
-SA_HI  = (165, 135, 85, 255)  # gold-brown highlight
-SA_BASE = (135, 108, 65, 255) # base
-SA_SH  = (105, 82, 48, 255)   # shadow
+# Inner collar — cream white
+IC0 = (248, 242, 232, 255) # highlight
+IC1 = (232, 222, 210, 255) # base
+IC2 = (208, 198, 185, 255) # shadow
 
-# Beard (dark brown)
-BD_HI  = (72, 60, 48, 255)    # highlight
-BD_BASE = (52, 42, 35, 255)   # base
-BD_SH  = (38, 30, 25, 255)    # shadow
+# Sash / belt — dark brown-gold
+SA0 = (162, 132, 82, 255)  # highlight
+SA1 = (132, 105, 62, 255)  # base
+SA2 = (102, 80, 45, 255)   # shadow
 
-# Eye colors
-EYE_DARK = (25, 20, 22, 255)
-EYE_IRIS = (65, 45, 35, 255)  # dark brown iris
-EYE_HI   = (255, 255, 255, 255)
+# Beard — dark brown, subtle
+BD = (55, 42, 32, 255)     # single beard color (subtle hint)
 
-# Bamboo staff (green-brown)
-BM_HI  = (115, 148, 62, 255)
-BM_BASE = (88, 118, 42, 255)
-BM_SH  = (62, 85, 28, 255)
+# Eyes — maximum contrast for Stardew iconic look
+EW = (255, 255, 255, 255)  # eye white — pure white
+EI = (62, 42, 32, 255)     # iris — dark brown
+ED = (22, 18, 15, 255)     # pupil / lash — near black
 
-# Boots (dark leather)
-BT_HI  = (65, 55, 48, 255)
-BT_BASE = (45, 38, 32, 255)
-BT_SH  = (32, 26, 22, 255)
+# Boots — dark leather
+BT0 = (62, 52, 42, 255)    # highlight
+BT1 = (42, 35, 28, 255)    # base
+BT2 = (28, 22, 18, 255)    # shadow
 
-# === SHORTHAND ALIASES ===
-O = OL_DARK
-M = OL_MED
-Hh = OL_HAT   # hat outline (avoid clash with 'H' for hair in zhaoyun)
+# ── shorthand aliases (single-letter where possible) ──
+O  = OL
+M  = OM
+s0, s1, s2, s3 = S0, S1, S2, S3
+h0, h1, h2 = HT0, HT1, HT2
+hr0, hr1, hr2 = HR0, HR1, HR2
+c0, c1, c2, c3 = C0, C1, C2, C3
+ic0, ic1, ic2 = IC0, IC1, IC2
+sa0, sa1, sa2 = SA0, SA1, SA2
+bd = BD
+ew, ei, ed = EW, EI, ED
+bt0, bt1, bt2 = BT0, BT1, BT2
 
-s0 = SK_HI
-s1 = SK_BASE
-s2 = SK_SH
-s3 = SK_DSH
+# ═══════════════════════════════════════════════════════════════════
+# CHARACTER SPRITE  (16 x 32 per frame, 4 frames x 4 directions)
+# ═══════════════════════════════════════════════════════════════════
+# Dongpo turban: flat-topped rectangle, ~10px wide, 4px tall
+# Eyes at y6-y7: 2px dark lash + white/iris below — most prominent feature
+# Beard: 1px hint at chin only
+# Body: ~10px shoulder width, blue robe, white V-collar, dark sash
 
-ht0 = HT_HI
-ht1 = HT_BASE
-ht2 = HT_SH
-
-c0 = CL_HI
-c1 = CL_BASE
-c2 = CL_SH
-c3 = CL_DSH
-
-ic0 = IC_HI
-ic1 = IC_BASE
-ic2 = IC_SH
-
-sa0 = SA_HI
-sa1 = SA_BASE
-sa2 = SA_SH
-
-bd0 = BD_HI
-bd1 = BD_BASE
-bd2 = BD_SH
-
-ed = EYE_DARK
-ei = EYE_IRIS
-eh = EYE_HI
-
-bm0 = BM_HI
-bm1 = BM_BASE
-bm2 = BM_SH
-
-bt0 = BT_HI
-bt1 = BT_BASE
-bt2 = BT_SH
-
-# === CHARACTER SPRITE (16x32 per frame) ===
-# Su Shi: male, taller/broader than Zhaoyun
-# Scholar cap (东坡巾), blue robe, beard, bamboo staff on right side
-# Eyes: 2-row (lash line + iris/highlight), no separate eyebrow row
-# Light source: top-left
-
-# Front-facing standing frame (facing down/south)
+# ── Front-facing standing (south) ──
 FRONT_STAND = [
     #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-    [T,  T,  T,  T,  T,  Hh, Hh, Hh, Hh, Hh, Hh, T,  T,  T,  T,  T ],  # y0  hat top
-    [T,  T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1, Hh, T,  T,  T,  T ],  # y1  hat body
-    [T,  T,  T,  Hh,ht0,ht0,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y2  hat body
-    [T,  T,  Hh,ht0,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T ],  # y3  hat brim
-    [T,  T,  T,  Hh,ht1, s0, s0, s1, s1, s1, s2,ht2, Hh, T,  T,  T ],  # y4  forehead
-    [T,  T,  T,  Hh,ht1, s0, s1, s1, s1, s1, s2,ht2, Hh, T,  T,  T ],  # y5  upper face
-    [T,  T,  T,  Hh, s0, s0, ed, s1, s1, ed, s1, s2, Hh, T,  T,  T ],  # y6  eye top (lash)
-    [T,  T,  T,  Hh, s0, eh, ei, s1, s1, ei, ed, s2, Hh, T,  T,  T ],  # y7  eye bottom (iris)
-    [T,  T,  T,  Hh, s1, s1, s1, s2, s1, s1, s1, s2, Hh, T,  T,  T ],  # y8  nose
-    [T,  T,  T,  Hh, s1, s1, s1, s1, s1, s1, s1, s3, Hh, T,  T,  T ],  # y9  upper lip area
-    [T,  T,  T,  Hh, s2,bd0,bd1, s2, s2,bd1,bd0, s3, Hh, T,  T,  T ],  # y10 beard
-    [T,  T,  T,  Hh, s2,bd1,bd2,bd1,bd1,bd2,bd1, s3, Hh, T,  T,  T ],  # y11 beard lower
-    [T,  T,  T,  O,  s2, s2,bd2,bd2,bd2,bd2, s2, s3, O,  T,  T,  T ],  # y12 chin + beard tip
-    [T,  T,  O, ic0,ic0,ic1, s2, s2, s2,ic1,ic1,ic2, O,  T,  T,  T ],  # y13 collar
-    [T,  O,  O, c0, c0, c1,ic0,ic1,ic1, c1, c1, c2, O,  O,  T,  T ],  # y14 upper body + V collar
-    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T ],  # y15 chest
-    [T,  O,  c0, c0, c1,sa0,sa1,sa1,sa1,sa0, c1, c2, c2, O,  T,  T ],  # y16 sash
-    [T,  O,  c0, c0, c1,sa1,sa2,sa2,sa2,sa1, c1, c2, c2, O,  T,  T ],  # y17 sash lower
-    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T ],  # y18 waist
-    [T,  O,  c0, c1, c1, c1, c1, c2, c2, c1, c1, c2, c3, O,  T,  T ],  # y19 hip
-    [T,  O,  c0, c1, c1, c1, c2, c1, c1, c2, c1, c2, c3, O,  T,  T ],  # y20 robe fold
-    [T,  O,  c0, c1, c1, c2, c2, c2, c2, c2, c2, c3, c3, O,  T,  T ],  # y21 robe
-    [T,  T,  O,  c1, c1, c2, c2, c2, c2, c2, c2, c3, O,  T,  T,  T ],  # y22 robe lower
-    [T,  T,  O,  c1, c2, c2, c3, c3, c3, c2, c3, c3, O,  T,  T,  T ],  # y23 robe hem
-    [T,  T,  T,  O,  c2, c3, c3, O,  O,  c3, c3, O,  T,  T,  T,  T ],  # y24 ankles
-    [T,  T,  T,  O, bt0,bt1, O,  T,  T,  O, bt0,bt1, O,  T,  T,  T ],  # y25 boots
-    [T,  T,  T,  O, bt0,bt1,bt2, O,  O, bt1,bt0,bt2, O,  T,  T,  T ],  # y26 boots
-    [T,  T,  T,  T,  O,  O,  O,  T,  T,  O,  O,  O,  T,  T,  T,  T ],  # y27 boot soles
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y28
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y29
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y30
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y31
-]
-
-# Right-facing standing frame — wider body (13px), staff visible behind
-RIGHT_STAND = [
-    #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-    [T,  T,  T,  T,  T,  Hh, Hh, Hh, Hh, Hh, T,  T,  T,  T,  T,  T ],  # y0  hat top
-    [T,  T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1, Hh, T,  T,  T,  T,  T ],  # y1  hat
-    [T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T,  T ],  # y2  hat
-    [T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y3  hat brim
-    [T,  T,  T,  Hh,ht1, s0, s1, s1, s1, s1,ht2, Hh, T,  T,  T,  T ],  # y4  forehead
-    [T,  T,  T,  Hh, s0, s0, s1, s1, s1, s1, s2, Hh, T,  T,  T,  T ],  # y5  face
-    [T,  T,  T,  Hh, s0, s1, s1, ed, s1, s1, s2, Hh, T,  T,  T,  T ],  # y6  eye top
-    [T,  T,  T,  Hh, s0, s1, s1, ei, eh, s1, s2, Hh, T,  T,  T,  T ],  # y7  eye bottom
-    [T,  T,  T,  Hh, s1, s1, s1, s1, s2, s2, s2, Hh, T,  T,  T,  T ],  # y8  nose
-    [T,  T,  T,  Hh, s1, s1, s1, s1, s1, s2, s3, Hh, T,  T,  T,  T ],  # y9  mouth area
-    [T,  T,  T,  Hh, s2,bd0,bd1,bd1, s2, s2, s3, Hh, T,  T,  T,  T ],  # y10 beard
-    [T,  T,  T,  Hh, s2,bd1,bd2,bd1, s2, s3, s3, Hh, T,  T,  T,  T ],  # y11 beard
-    [T,  T,  T,  O,  s2, s2,bd2, s2, s2, s3, O,  T,  T,  T,  T,  T ],  # y12 chin
-    [T,  T,  O, ic0,ic1, s2, s2,ic1,ic1, c1, c2, O,  T,  T,  T,  T ],  # y13 collar
-    [T,  O,  c0, c0, c1, c1,ic0, c1, c1, c1, c2, c2, O,  T,  T,  T ],  # y14 body
-    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T,  T ],  # y15 chest
-    [T,  O,  c0, c0, c1,sa0,sa1,sa1, c1, c1, c2, c2, O,  T,  T,  T ],  # y16 sash
-    [T,  O,  c0, c0, c1,sa1,sa2,sa2, c1, c1, c2, c2, O,  T,  T,  T ],  # y17 sash
-    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T,  T ],  # y18 waist
-    [T,  O,  c0, c1, c1, c1, c1, c2, c1, c1, c2, c3, O,  T,  T,  T ],  # y19 hip
-    [T,  O,  c0, c1, c1, c2, c1, c1, c2, c2, c2, c3, O,  T,  T,  T ],  # y20 robe
-    [T,  O,  c1, c1, c2, c2, c2, c2, c2, c2, c3, c3, O,  T,  T,  T ],  # y21 robe
-    [T,  T,  O,  c1, c2, c2, c2, c2, c2, c3, c3, O,  T,  T,  T,  T ],  # y22 robe lower
-    [T,  T,  T,  O,  c2, c3, c3, c3, c3, c3, O,  T,  T,  T,  T,  T ],  # y23 robe hem
-    [T,  T,  T,  T,  O,  c3, c3, c3, c3, O,  T,  T,  T,  T,  T,  T ],  # y24 ankles
-    [T,  T,  T,  T,  O, bt0, O,  T,  O, bt0, O,  T,  T,  T,  T,  T ],  # y25 boots
-    [T,  T,  T,  T,  O, bt0,bt1, O, bt0,bt1, O,  T,  T,  T,  T,  T ],  # y26 boots
-    [T,  T,  T,  T,  T,  O,  O,  T,  O,  O,  T,  T,  T,  T,  T,  T ],  # y27 soles
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y28
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y29
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y30
-    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y31
-]
-
-# Back-facing standing frame — hat visible, robe back, no face
-BACK_STAND = [
-    #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-    [T,  T,  T,  T,  T,  Hh, Hh, Hh, Hh, Hh, Hh, T,  T,  T,  T,  T ],  # y0  hat top
-    [T,  T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1, Hh, T,  T,  T,  T ],  # y1  hat
-    [T,  T,  T,  Hh,ht0,ht0,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y2  hat
-    [T,  T,  Hh,ht0,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T ],  # y3  hat brim
-    [T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y4  back of head
-    [T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y5  back of head
-    [T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y6  back of head
-    [T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y7  back of head
-    [T,  T,  T,  Hh,ht0,ht1,ht1,ht1,ht1,ht1,ht1,ht2, Hh, T,  T,  T ],  # y8  back of head
-    [T,  T,  T,  Hh, s0, s1, s1, s1, s1, s1, s1, s2, Hh, T,  T,  T ],  # y9  neck back
-    [T,  T,  T,  Hh, s1, s1, s1, s1, s1, s1, s1, s2, Hh, T,  T,  T ],  # y10 neck
-    [T,  T,  T,  Hh, s2, s2, s2, s2, s2, s2, s2, s3, Hh, T,  T,  T ],  # y11 neck base
-    [T,  T,  T,  O, ic0,ic1, s2, s2, s2,ic1,ic2, O,  O,  T,  T,  T ],  # y12 collar back
-    [T,  T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c2, O,  T,  T,  T ],  # y13 upper back
-    [T,  O,  c0, c0, c0, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T ],  # y14 back
-    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T ],  # y15 back
-    [T,  O,  c0, c0, c1,sa0,sa1,sa1,sa1,sa0, c1, c2, c2, O,  T,  T ],  # y16 sash
-    [T,  O,  c0, c0, c1,sa1,sa2,sa2,sa2,sa1, c1, c2, c2, O,  T,  T ],  # y17 sash
-    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2, O,  T,  T ],  # y18 waist
-    [T,  O,  c0, c1, c1, c1, c1, c2, c2, c1, c1, c2, c3, O,  T,  T ],  # y19 hip
-    [T,  O,  c0, c1, c1, c1, c2, c1, c1, c2, c1, c2, c3, O,  T,  T ],  # y20 robe
-    [T,  O,  c0, c1, c1, c2, c2, c2, c2, c2, c2, c3, c3, O,  T,  T ],  # y21 robe
-    [T,  T,  O,  c1, c1, c2, c2, c2, c2, c2, c2, c3, O,  T,  T,  T ],  # y22 robe lower
-    [T,  T,  O,  c1, c2, c2, c3, c3, c3, c2, c3, c3, O,  T,  T,  T ],  # y23 robe hem
-    [T,  T,  T,  O,  c2, c3, c3, O,  O,  c3, c3, O,  T,  T,  T,  T ],  # y24 ankles
-    [T,  T,  T,  O, bt0,bt1, O,  T,  T,  O, bt0,bt1, O,  T,  T,  T ],  # y25 boots
-    [T,  T,  T,  O, bt0,bt1,bt2, O,  O, bt1,bt0,bt2, O,  T,  T,  T ],  # y26 boots
+    [T,  T,  T,  T,  O,  O,  O,  O,  O,  O,  O,  O,  T,  T,  T,  T ],  # y0  turban top outline (flat!)
+    [T,  T,  T,  O, h0, h0, h1, h1, h1, h1, h1, h2,  O,  T,  T,  T ],  # y1  turban body
+    [T,  T,  T,  O, h0, h1, h1, h1, h1, h1, h1, h2,  O,  T,  T,  T ],  # y2  turban body
+    [T,  T,  O, h0, h0, h1, h1, h1, h1, h1, h1, h2, h2,  O,  T,  T ],  # y3  turban brim (wider)
+    [T,  T,  T,  O,hr0, s0, s0, s1, s1, s1, s2,hr2,  O,  T,  T,  T ],  # y4  forehead + hair sides
+    [T,  T,  T,  O, s0, s0, s1, s1, s1, s1, s1, s2,  O,  T,  T,  T ],  # y5  upper face
+    [T,  T,  T,  O, s0, ed, ed, s1, s1, ed, ed, s2,  O,  T,  T,  T ],  # y6  ★ eye lash line (2px each)
+    [T,  T,  T,  O, s0, ew, ei, s1, s1, ei, ew, s2,  O,  T,  T,  T ],  # y7  ★ eye iris + white
+    [T,  T,  T,  O, s1, s1, s1, s2, s1, s1, s1, s2,  O,  T,  T,  T ],  # y8  nose (1px shadow)
+    [T,  T,  T,  O, s1, s1, s2, s1, s1, s2, s1, s3,  O,  T,  T,  T ],  # y9  mouth area
+    [T,  T,  T,  O, s2, s2, bd, s2, s2, bd, s2, s3,  O,  T,  T,  T ],  # y10 chin + beard hint (2px)
+    [T,  T,  T,  T,  O, s2, s2, s2, s2, s2, s2,  O,  T,  T,  T,  T ],  # y11 neck
+    [T,  T,  T,  O,ic0,ic1, s2, s2, s2,ic1,ic2,  O,  T,  T,  T,  T ],  # y12 collar
+    [T,  T,  O, c0, c0,ic0,ic1,ic1,ic1,ic0, c1, c2,  O,  T,  T,  T ],  # y13 upper body + V collar
+    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T ],  # y14 chest (shoulders ~10px)
+    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T ],  # y15 chest
+    [T,  O,  c0, c1,sa0,sa0,sa1,sa1,sa1,sa0,sa0, c2, c2,  O,  T,  T ],  # y16 sash
+    [T,  O,  c0, c1,sa1,sa2,sa2,sa2,sa2,sa2,sa1, c2, c2,  O,  T,  T ],  # y17 sash lower
+    [T,  O,  c0, c1, c1, c1, c1, c1, c1, c1, c1, c2, c3,  O,  T,  T ],  # y18 waist
+    [T,  O,  c0, c1, c1, c1, c2, c1, c1, c2, c1, c2, c3,  O,  T,  T ],  # y19 hip fold
+    [T,  O,  c0, c1, c1, c2, c1, c2, c2, c1, c2, c2, c3,  O,  T,  T ],  # y20 robe fold
+    [T,  T,  O,  c1, c1, c2, c2, c2, c2, c2, c2, c3,  O,  T,  T,  T ],  # y21 robe
+    [T,  T,  O,  c1, c2, c2, c2, c2, c2, c2, c2, c3,  O,  T,  T,  T ],  # y22 robe lower
+    [T,  T,  T,  O,  c2, c2, c3, c3, c3, c2, c3,  O,  T,  T,  T,  T ],  # y23 robe hem
+    [T,  T,  T,  O,  c3, c3,  O,  T,  T,  O,  c3, c3,  O,  T,  T,  T ],  # y24 ankles
+    [T,  T,  T,  O,bt0,bt1,  O,  T,  T,  O,bt0,bt1,  O,  T,  T,  T ],  # y25 boots
+    [T,  T,  T,  O,bt0,bt1,bt2,  O,  O,bt1,bt0,bt2,  O,  T,  T,  T ],  # y26 boots
     [T,  T,  T,  T,  O,  O,  O,  T,  T,  O,  O,  O,  T,  T,  T,  T ],  # y27 soles
     [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y28
     [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y29
@@ -226,54 +129,135 @@ BACK_STAND = [
     [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y31
 ]
 
-# Left-facing: mirror of right-facing
+# ── Right-facing standing (east) ──
+# Profile: turban side, one eye visible, robe side
+RIGHT_STAND = [
+    #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    [T,  T,  T,  T,  T,  O,  O,  O,  O,  O,  O,  T,  T,  T,  T,  T ],  # y0  turban top
+    [T,  T,  T,  T,  O, h0, h1, h1, h1, h1, h2,  O,  T,  T,  T,  T ],  # y1  turban
+    [T,  T,  T,  O, h0, h1, h1, h1, h1, h1, h1, h2,  O,  T,  T,  T ],  # y2  turban
+    [T,  T,  O, h0, h1, h1, h1, h1, h1, h1, h1, h2,  O,  T,  T,  T ],  # y3  turban brim
+    [T,  T,  T,  O,hr0, s0, s1, s1, s1, s1, s2,  O,  T,  T,  T,  T ],  # y4  forehead
+    [T,  T,  T,  O, s0, s0, s1, s1, s1, s1, s2,  O,  T,  T,  T,  T ],  # y5  upper face
+    [T,  T,  T,  O, s0, s1, s1, ed, ed, s1, s2,  O,  T,  T,  T,  T ],  # y6  eye lash (profile)
+    [T,  T,  T,  O, s0, s1, s1, ew, ei, s1, s2,  O,  T,  T,  T,  T ],  # y7  eye iris (profile)
+    [T,  T,  T,  O, s1, s1, s1, s1, s2, s2, s2,  O,  T,  T,  T,  T ],  # y8  nose (profile bump)
+    [T,  T,  T,  O, s1, s1, s1, s1, s1, s2, s3,  O,  T,  T,  T,  T ],  # y9  mouth
+    [T,  T,  T,  O, s2, s2, bd, s2, s2, s3, s3,  O,  T,  T,  T,  T ],  # y10 chin + beard
+    [T,  T,  T,  T,  O, s2, s2, s2, s2, s3,  O,  T,  T,  T,  T,  T ],  # y11 neck
+    [T,  T,  T,  O,ic0,ic1, s2,ic1,ic1, c1,  O,  T,  T,  T,  T,  T ],  # y12 collar
+    [T,  T,  O, c0, c0, c1,ic0, c1, c1, c1, c2,  O,  T,  T,  T,  T ],  # y13 upper body
+    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T,  T ],  # y14 chest
+    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T,  T ],  # y15 chest
+    [T,  O,  c0, c1,sa0,sa1,sa1,sa1, c1, c1, c2, c2,  O,  T,  T,  T ],  # y16 sash
+    [T,  O,  c0, c1,sa1,sa2,sa2,sa2, c1, c1, c2, c2,  O,  T,  T,  T ],  # y17 sash
+    [T,  O,  c0, c1, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T,  T ],  # y18 waist
+    [T,  O,  c0, c1, c1, c1, c2, c1, c1, c2, c2, c3,  O,  T,  T,  T ],  # y19 hip
+    [T,  O,  c0, c1, c1, c2, c1, c2, c2, c2, c2, c3,  O,  T,  T,  T ],  # y20 robe
+    [T,  T,  O,  c1, c1, c2, c2, c2, c2, c2, c3,  O,  T,  T,  T,  T ],  # y21 robe
+    [T,  T,  O,  c1, c2, c2, c2, c2, c2, c3, c3,  O,  T,  T,  T,  T ],  # y22 robe lower
+    [T,  T,  T,  O,  c2, c3, c3, c3, c3, c3,  O,  T,  T,  T,  T,  T ],  # y23 robe hem
+    [T,  T,  T,  T,  O,  c3, c3,  O,  O, c3,  O,  T,  T,  T,  T,  T ],  # y24 ankles
+    [T,  T,  T,  T,  O,bt0,  O,  T,  T,  O,bt0,  O,  T,  T,  T,  T ],  # y25 boots
+    [T,  T,  T,  T,  O,bt0,bt1,  O,  O,bt0,bt1,  O,  T,  T,  T,  T ],  # y26 boots
+    [T,  T,  T,  T,  T,  O,  O,  T,  T,  O,  O,  T,  T,  T,  T,  T ],  # y27 soles
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y28
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y29
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y30
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y31
+]
+
+# ── Back-facing standing (north) ──
+# Turban from behind, robe back, no face
+BACK_STAND = [
+    #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    [T,  T,  T,  T,  O,  O,  O,  O,  O,  O,  O,  O,  T,  T,  T,  T ],  # y0  turban top
+    [T,  T,  T,  O, h0, h0, h1, h1, h1, h1, h1, h2,  O,  T,  T,  T ],  # y1  turban
+    [T,  T,  T,  O, h0, h1, h1, h1, h1, h1, h1, h2,  O,  T,  T,  T ],  # y2  turban
+    [T,  T,  O, h0, h0, h1, h1, h1, h1, h1, h1, h2, h2,  O,  T,  T ],  # y3  turban brim
+    [T,  T,  T,  O,hr0,hr1,hr1,hr1,hr1,hr1,hr1,hr2,  O,  T,  T,  T ],  # y4  back of head (hair)
+    [T,  T,  T,  O,hr0,hr1,hr1,hr1,hr1,hr1,hr1,hr2,  O,  T,  T,  T ],  # y5  back of head
+    [T,  T,  T,  O,hr0,hr1,hr1,hr1,hr1,hr1,hr1,hr2,  O,  T,  T,  T ],  # y6  back of head
+    [T,  T,  T,  O,hr0,hr1,hr1,hr1,hr1,hr1,hr1,hr2,  O,  T,  T,  T ],  # y7  back of head
+    [T,  T,  T,  O,hr0,hr1,hr1,hr1,hr1,hr1,hr1,hr2,  O,  T,  T,  T ],  # y8  back of head
+    [T,  T,  T,  O, s0, s1, s1, s1, s1, s1, s1, s2,  O,  T,  T,  T ],  # y9  neck back
+    [T,  T,  T,  O, s1, s1, s1, s1, s1, s1, s1, s2,  O,  T,  T,  T ],  # y10 neck
+    [T,  T,  T,  T,  O, s2, s2, s2, s2, s2, s2,  O,  T,  T,  T,  T ],  # y11 neck base
+    [T,  T,  T,  O,ic0,ic1, s2, s2, s2,ic1,ic2,  O,  T,  T,  T,  T ],  # y12 collar back
+    [T,  T,  O, c0, c0, c1, c1, c1, c1, c1, c1, c2,  O,  T,  T,  T ],  # y13 upper back
+    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T ],  # y14 back
+    [T,  O,  c0, c0, c1, c1, c1, c1, c1, c1, c1, c2, c2,  O,  T,  T ],  # y15 back
+    [T,  O,  c0, c1,sa0,sa0,sa1,sa1,sa1,sa0,sa0, c2, c2,  O,  T,  T ],  # y16 sash
+    [T,  O,  c0, c1,sa1,sa2,sa2,sa2,sa2,sa2,sa1, c2, c2,  O,  T,  T ],  # y17 sash
+    [T,  O,  c0, c1, c1, c1, c1, c1, c1, c1, c1, c2, c3,  O,  T,  T ],  # y18 waist
+    [T,  O,  c0, c1, c1, c1, c2, c1, c1, c2, c1, c2, c3,  O,  T,  T ],  # y19 hip
+    [T,  O,  c0, c1, c1, c2, c1, c2, c2, c1, c2, c2, c3,  O,  T,  T ],  # y20 robe
+    [T,  T,  O,  c1, c1, c2, c2, c2, c2, c2, c2, c3,  O,  T,  T,  T ],  # y21 robe
+    [T,  T,  O,  c1, c2, c2, c2, c2, c2, c2, c2, c3,  O,  T,  T,  T ],  # y22 robe lower
+    [T,  T,  T,  O,  c2, c2, c3, c3, c3, c2, c3,  O,  T,  T,  T,  T ],  # y23 robe hem
+    [T,  T,  T,  O,  c3, c3,  O,  T,  T,  O,  c3, c3,  O,  T,  T,  T ],  # y24 ankles
+    [T,  T,  T,  O,bt0,bt1,  O,  T,  T,  O,bt0,bt1,  O,  T,  T,  T ],  # y25 boots
+    [T,  T,  T,  O,bt0,bt1,bt2,  O,  O,bt1,bt0,bt2,  O,  T,  T,  T ],  # y26 boots
+    [T,  T,  T,  T,  O,  O,  O,  T,  T,  O,  O,  O,  T,  T,  T,  T ],  # y27 soles
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y28
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y29
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y30
+    [T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T,  T ],  # y31
+]
+
+# ── Left-facing = mirror of right ──
 def mirror_frame(frame):
     return [list(reversed(row)) for row in frame]
 
 LEFT_STAND = mirror_frame(RIGHT_STAND)
 
+# ═══════════════════════════════════════════════════════════════════
+# WALK ANIMATION
+# ═══════════════════════════════════════════════════════════════════
+# Walk frames: head bobs down 1px, feet split apart for stride.
+
 def make_walk_frame(stand, step_side, direction):
     """Generate a walk frame from standing frame.
     Head bobs down 1px, feet shift to show stepping.
-    Wider stride than default for visible animation.
     """
     import copy
     frame = copy.deepcopy(stand)
 
-    # Find the first non-empty row (top of sprite)
+    # Find first non-empty row
     first_row = 0
     for i, row in enumerate(frame):
         if any(c != T for c in row):
             first_row = i
             break
 
-    # Head bob: shift rows first_row..12 down by 1px
-    body_start = 13
+    # Head bob: shift rows first_row..11 down by 1px
+    body_start = 12
     head_rows = frame[first_row:body_start]
     for i in range(first_row, body_start):
         frame[i] = [T] * 16
     for i, row in enumerate(head_rows):
-        if first_row + i + 1 < body_start + 1:
-            frame[first_row + i + 1] = row
+        target = first_row + i + 1
+        if target < body_start + 1:
+            frame[target] = row
 
-    # Leg animation: modify robe hem + feet (y23-y27) for wide stride
+    # Leg animation: modify robe hem + feet (y23-y27)
     if direction in ('front', 'back'):
         if step_side == 'left':
-            frame[23] = [T,T,O,c1,c2,c2,c3,c3,c3,c2,c3,c3,O,T,T,T]
-            frame[24] = [T,O,c2,c3,c3,T,T,T,T,T,c3,c3,c3,O,T,T]
-            frame[25] = [T,O,bt0,O,T,T,T,T,T,T,T,O,bt0,O,T,T]
+            frame[23] = [T,T,T,O,c2,c2,c3,c3,c3,c2,c3,O,T,T,T,T]
+            frame[24] = [T,T,O,c3,c3,T,T,T,T,T,c3,c3,O,T,T,T]
+            frame[25] = [T,T,O,bt0,O,T,T,T,T,T,O,bt0,O,T,T,T]
             frame[26] = [T,O,bt0,bt1,O,T,T,T,T,T,O,bt0,bt1,O,T,T]
             frame[27] = [T,T,O,O,T,T,T,T,T,T,T,O,O,T,T,T]
         else:
-            frame[23] = [T,T,O,c1,c2,c2,c3,c3,c3,c2,c3,c3,O,T,T,T]
-            frame[24] = [T,O,c2,c3,c3,c3,T,T,T,T,c3,c3,O,T,T,T]
-            frame[25] = [T,T,O,bt0,O,T,T,T,T,T,O,bt0,O,T,T,T]
-            frame[26] = [T,O,bt0,bt1,O,T,T,T,T,O,bt0,bt1,O,T,T,T]
-            frame[27] = [T,T,O,O,T,T,T,T,T,T,O,O,T,T,T,T]
+            frame[23] = [T,T,T,O,c2,c2,c3,c3,c3,c2,c3,O,T,T,T,T]
+            frame[24] = [T,T,O,c3,c3,c3,T,T,T,T,c3,c3,O,T,T,T]
+            frame[25] = [T,T,T,O,bt0,O,T,T,T,O,bt0,O,T,T,T,T]
+            frame[26] = [T,T,O,bt0,bt1,O,T,T,O,bt0,bt1,O,T,T,T,T]
+            frame[27] = [T,T,T,O,O,T,T,T,T,O,O,T,T,T,T,T]
     elif direction == 'right':
         if step_side == 'left':
             frame[23] = [T,T,T,O,c2,c3,c3,c3,c3,c3,O,T,T,T,T,T]
-            frame[24] = [T,T,T,O,c3,c3,c3,O,T,T,T,T,T,T,T,T]
+            frame[24] = [T,T,T,O,c3,c3,O,T,T,T,T,T,T,T,T,T]
             frame[25] = [T,T,O,bt0,O,T,T,O,bt0,O,T,T,T,T,T,T]
             frame[26] = [T,T,O,bt0,bt1,O,T,O,bt0,bt1,O,T,T,T,T,T]
             frame[27] = [T,T,T,O,O,T,T,T,O,O,T,T,T,T,T,T]
@@ -292,7 +276,7 @@ def make_walk_frame(stand, step_side, direction):
             frame[27] = [T,T,T,T,T,O,O,T,T,T,O,O,T,T,T,T]
         else:
             frame[23] = [T,T,T,T,T,O,c3,c3,c3,c3,c2,O,T,T,T,T]
-            frame[24] = [T,T,T,T,O,c3,c3,c3,O,T,T,T,T,T,T,T]
+            frame[24] = [T,T,T,T,O,c3,c3,O,T,T,T,T,T,T,T,T]
             frame[25] = [T,T,T,O,bt0,O,T,T,O,bt0,O,T,T,T,T,T]
             frame[26] = [T,T,T,O,bt0,bt1,O,T,O,bt0,bt1,O,T,T,T,T]
             frame[27] = [T,T,T,T,O,O,T,T,T,O,O,T,T,T,T,T]
@@ -300,8 +284,12 @@ def make_walk_frame(stand, step_side, direction):
     return frame
 
 
+# ═══════════════════════════════════════════════════════════════════
+# SPRITE SHEET ASSEMBLY
+# ═══════════════════════════════════════════════════════════════════
+
 def paint_frame(img, frame_data, offset_x, offset_y):
-    """Paint a 16x32 frame onto the image at the given offset."""
+    """Paint a 16x32 frame onto the image."""
     for y, row in enumerate(frame_data):
         for x, color in enumerate(row):
             if color != T:
@@ -309,7 +297,7 @@ def paint_frame(img, frame_data, offset_x, offset_y):
 
 
 def generate_character_sheet():
-    """Generate the 64x128 character sprite sheet."""
+    """Generate the 64x128 character sprite sheet (4 directions x 4 frames)."""
     img = Image.new("RGBA", (64, 128), (0, 0, 0, 0))
 
     directions = [
@@ -334,10 +322,14 @@ def generate_character_sheet():
 
     return img
 
+# ═══════════════════════════════════════════════════════════════════
+# PORTRAIT  (128x128 sheet = 2x2 grid of 64x64 portraits)
+# ═══════════════════════════════════════════════════════════════════
+# At 64x64 we can render much more detail: wider eyes with 3px whites,
+# detailed turban, visible beard texture, robe folds.
+
 def generate_portrait_default(img, ox, oy):
-    """Draw the default expression portrait at offset (ox, oy) in 64x64.
-    Su Shi: male, scholar cap, beard, blue robe, dignified expression.
-    """
+    """Default expression — dignified, calm scholar."""
     def p(x, y, c):
         if 0 <= x < 64 and 0 <= y < 64:
             img.putpixel((ox + x, oy + y), c)
@@ -350,175 +342,194 @@ def generate_portrait_default(img, ox, oy):
         for yy in range(y1, y2 + 1):
             hline(x1, x2, yy, c)
 
-    # --- Scholar cap (东坡巾) ---
-    # Wide, flat-topped cap with slight wings
-    fill_rect(18, 1, 45, 3, ht1)    # cap top
-    fill_rect(16, 4, 47, 8, ht1)    # cap body
-    fill_rect(18, 1, 30, 6, ht0)    # highlight left
-    fill_rect(40, 4, 47, 8, ht2)    # shadow right
-    # Cap wings (decorative flaps on sides)
-    fill_rect(12, 5, 15, 7, ht1)    # left wing
-    fill_rect(48, 5, 51, 7, ht2)    # right wing
-    # Cap outline
-    hline(18, 45, 0, Hh)
+    # --- Dongpo turban (东坡巾) ---
+    # Flat-topped rectangular cap, the most iconic feature
+    # Main body: wide rectangle
+    fill_rect(17, 1, 46, 3, h1)     # cap top
+    fill_rect(15, 4, 48, 8, h1)     # cap body
+    # Lighting: highlight left, shadow right
+    fill_rect(17, 1, 30, 3, h0)     # top highlight
+    fill_rect(15, 4, 28, 8, h0)     # body highlight
+    fill_rect(40, 4, 48, 8, h2)     # body shadow
+    # Flat top outline
+    hline(17, 46, 0, O)             # top edge (flat!)
     for y in range(1, 4):
-        p(17, y, Hh); p(46, y, Hh)
+        p(16, y, O); p(47, y, O)
     for y in range(4, 9):
-        p(15, y, Hh); p(48, y, Hh)
-    # Wing outlines
-    for y in range(5, 8):
-        p(11, y, Hh); p(52, y, Hh)
-    hline(12, 15, 4, Hh); hline(48, 51, 4, Hh)
-    hline(12, 15, 8, Hh); hline(48, 51, 8, Hh)
+        p(14, y, O); p(49, y, O)
+    hline(14, 16, 4, O)             # brim left
+    hline(47, 49, 4, O)             # brim right
+    hline(14, 49, 9, O)             # bottom edge of turban
 
-    # --- Face (wider, male proportions) ---
-    fill_rect(18, 9, 45, 32, s1)     # base face
-    fill_rect(18, 9, 30, 14, s0)     # forehead highlight (top-left light)
-    fill_rect(38, 9, 45, 32, s2)     # right face shadow
-    fill_rect(20, 30, 43, 32, s2)    # chin shadow
-    hline(22, 41, 32, s3)            # deep chin shadow
+    # --- Face ---
+    fill_rect(17, 10, 46, 33, s1)   # base face
+    fill_rect(17, 10, 30, 16, s0)   # forehead highlight (top-left)
+    fill_rect(38, 10, 46, 33, s2)   # right face shadow
+    fill_rect(20, 31, 43, 33, s2)   # chin shadow
+    # Face outline
+    for y in range(10, 34):
+        p(16, y, O); p(47, y, O)
 
-    # --- Eyes (2-row: lash line + iris, no separate brow row) ---
-    # Left eye
-    p(22, 17, ed); p(23, 17, ed); p(24, 17, ed); p(25, 17, ed)
-    p(22, 18, eh); p(23, 18, ei); p(24, 18, ei); p(25, 18, ed)
-    # Right eye
-    p(37, 17, ed); p(38, 17, ed); p(39, 17, ed); p(40, 17, ed)
-    p(37, 18, ed); p(38, 18, ei); p(39, 18, ei); p(40, 18, eh)
+    # --- Eyes (THE key feature — large, prominent, Stardew iconic) ---
+    # Left eye: 4px wide (1 dark border + 2 white + 1 iris)
+    p(22, 18, ed); p(23, 18, ed); p(24, 18, ed); p(25, 18, ed)  # lash line
+    p(22, 19, ed); p(23, 19, ew); p(24, 19, ew); p(25, 19, ei)  # white + iris
+    p(22, 20, ed); p(23, 20, ew); p(24, 20, ei); p(25, 20, ed)  # white + iris lower
+    # Right eye: 4px wide (mirror)
+    p(37, 18, ed); p(38, 18, ed); p(39, 18, ed); p(40, 18, ed)  # lash line
+    p(37, 19, ei); p(38, 19, ew); p(39, 19, ew); p(40, 19, ed)  # iris + white
+    p(37, 20, ed); p(38, 20, ei); p(39, 20, ew); p(40, 20, ed)  # iris + white lower
 
     # --- Nose ---
-    p(31, 22, s2); p(32, 22, s3)
-    p(31, 23, s3)
+    p(31, 23, s2); p(32, 23, s3)
+    p(31, 24, s3)
 
     # --- Mouth (subtle, dignified) ---
-    hline(29, 34, 25, s3)
+    hline(29, 34, 27, s3)
 
-    # --- Beard ---
-    fill_rect(22, 27, 41, 29, bd0)   # upper beard
-    fill_rect(24, 30, 39, 32, bd1)   # lower beard
-    fill_rect(26, 33, 37, 35, bd2)   # beard tip
-    # Beard highlight (left side, light source)
-    fill_rect(22, 27, 28, 29, bd0)
-    fill_rect(35, 27, 41, 29, bd1)   # shadow side
+    # --- Beard (subtle, 2-row hint) ---
+    hline(24, 39, 30, bd)           # upper beard line
+    hline(26, 37, 31, bd)           # lower beard line
+    hline(28, 35, 32, bd)           # beard tip
 
     # --- Neck ---
-    fill_rect(27, 33, 36, 37, s1)
-    fill_rect(27, 33, 31, 35, s0)
-    fill_rect(34, 33, 36, 37, s2)
+    fill_rect(27, 34, 36, 38, s1)
+    fill_rect(27, 34, 31, 36, s0)   # highlight
+    fill_rect(34, 34, 36, 38, s2)   # shadow
 
     # --- Clothing (blue scholar robe) ---
-    # Inner collar (V-neck, white)
-    fill_rect(18, 38, 45, 40, ic1)
-    hline(18, 28, 38, ic0)
-    hline(38, 45, 38, ic2)
+    # Inner collar (V-neck, white/cream)
+    fill_rect(17, 39, 46, 41, ic1)
+    hline(17, 28, 39, ic0)          # highlight
+    hline(38, 46, 39, ic2)          # shadow
     # V-collar lines
     for i in range(3):
-        p(29 - i, 38 + i, s2)
-        p(34 + i, 38 + i, s2)
+        p(30 - i, 39 + i, s2)
+        p(33 + i, 39 + i, s2)
 
     # Robe body
-    fill_rect(12, 41, 51, 58, c1)
-    fill_rect(12, 41, 22, 58, c0)    # highlight left
-    fill_rect(44, 41, 51, 58, c2)    # shadow right
+    fill_rect(11, 42, 52, 58, c1)
+    fill_rect(11, 42, 22, 58, c0)   # highlight left
+    fill_rect(44, 42, 52, 58, c2)   # shadow right
 
-    # Sash/belt
-    fill_rect(22, 45, 41, 48, sa1)
-    hline(22, 32, 45, sa0)           # highlight
-    hline(34, 41, 47, sa2)           # shadow
-    hline(22, 41, 48, sa2)           # bottom edge
+    # Sash / belt
+    fill_rect(22, 46, 41, 49, sa1)
+    hline(22, 32, 46, sa0)          # highlight
+    hline(34, 41, 48, sa2)          # shadow
+    hline(22, 41, 49, sa2)          # bottom edge
 
     # Robe folds
-    for y in range(50, 58):
+    for y in range(51, 58):
         p(28, y, c2)
         p(36, y, c2)
 
     # Bottom robe
-    fill_rect(12, 58, 51, 63, c2)
-    fill_rect(12, 58, 22, 63, c1)
-    fill_rect(44, 58, 51, 63, c3)
+    fill_rect(11, 58, 52, 63, c2)
+    fill_rect(11, 58, 22, 63, c1)
+    fill_rect(44, 58, 52, 63, c3)
 
     # Clothing outline
-    for y in range(38, 63):
-        p(11, y, O)
-        p(52, y, O)
-    hline(11, 52, 63, O)
+    for y in range(39, 63):
+        p(10, y, O)
+        p(53, y, O)
+    hline(10, 53, 63, O)
+
 
 def generate_portrait_happy(img, ox, oy):
-    """Happy expression — closed eyes (^_^), wider smile, joyful poet."""
+    """Happy expression — closed eyes (^_^), wider smile."""
     generate_portrait_default(img, ox, oy)
     def p(x, y, c):
-        img.putpixel((ox + x, oy + y), c)
+        if 0 <= x < 64 and 0 <= y < 64:
+            img.putpixel((ox + x, oy + y), c)
+
     # Clear default eyes
     for x in range(22, 26):
-        p(x, 17, s1); p(x, 18, s1)
+        for y in range(18, 21):
+            p(x, y, s1)
     for x in range(37, 41):
-        p(x, 17, s1); p(x, 18, s1)
+        for y in range(18, 21):
+            p(x, y, s1)
+
     # Happy curved eyes ^_^
-    p(22, 18, M); p(23, 17, M); p(24, 17, M); p(25, 18, M)
-    p(37, 18, M); p(38, 17, M); p(39, 17, M); p(40, 18, M)
-    # Wider smile (replace subtle mouth)
+    p(22, 20, M); p(23, 19, M); p(24, 19, M); p(25, 20, M)
+    p(37, 20, M); p(38, 19, M); p(39, 19, M); p(40, 20, M)
+
+    # Wider smile
     for x in range(28, 36):
-        p(x, 25, s1)  # clear old
+        p(x, 27, s3)
     for x in range(29, 35):
-        p(x, 25, s3)
-    p(28, 25, s3); p(35, 25, s3)
-    for x in range(29, 35):
-        p(x, 26, s3)
+        p(x, 28, s3)
 
 
 def generate_portrait_pensive(img, ox, oy):
-    """Pensive/contemplative expression — slightly lowered gaze, thoughtful.
-    苏轼沉思时的表情，如吟诗作赋时。
+    """Pensive/contemplative — half-closed eyes, thoughtful frown.
+    苏轼沉思吟诗时的表情。
     """
     generate_portrait_default(img, ox, oy)
     def p(x, y, c):
-        img.putpixel((ox + x, oy + y), c)
-    # Half-closed eyes (lower lids raised)
+        if 0 <= x < 64 and 0 <= y < 64:
+            img.putpixel((ox + x, oy + y), c)
+
+    # Clear top row of eyes (half-closed)
     for x in range(22, 26):
-        p(x, 17, s1)
+        p(x, 18, s1)
     for x in range(37, 41):
-        p(x, 17, s1)
-    # Narrowed eyes — just the lower row
-    p(22, 18, ed); p(23, 18, ei); p(24, 18, ei); p(25, 18, ed)
-    p(37, 18, ed); p(38, 18, ei); p(39, 18, ei); p(40, 18, ed)
-    # Slight frown line between brows (thinking)
-    p(30, 16, M); p(31, 16, M); p(32, 16, M)
+        p(x, 18, s1)
+
+    # Narrowed eyes — only bottom two rows remain, slightly squinted
+    p(22, 19, ed); p(23, 19, ew); p(24, 19, ei); p(25, 19, ed)
+    p(37, 19, ed); p(38, 19, ei); p(39, 19, ew); p(40, 19, ed)
+    p(22, 20, s2); p(23, 20, ed); p(24, 20, ed); p(25, 20, s2)
+    p(37, 20, s2); p(38, 20, ed); p(39, 20, ed); p(40, 20, s2)
+
+    # Thinking frown between brows
+    p(30, 17, M); p(31, 17, M); p(32, 17, M)
 
 
 def generate_portrait_surprised(img, ox, oy):
     """Surprised expression — wide eyes, open mouth."""
     generate_portrait_default(img, ox, oy)
     def p(x, y, c):
-        img.putpixel((ox + x, oy + y), c)
-    # Wider eyes (add extra highlight)
-    p(22, 17, ed); p(23, 17, ed); p(24, 17, ed); p(25, 17, ed); p(26, 17, ed)
-    p(22, 18, eh); p(23, 18, ei); p(24, 18, eh); p(25, 18, ei); p(26, 18, ed)
-    p(36, 17, ed); p(37, 17, ed); p(38, 17, ed); p(39, 17, ed); p(40, 17, ed)
-    p(36, 18, ed); p(37, 18, ei); p(38, 18, eh); p(39, 18, ei); p(40, 18, eh)
+        if 0 <= x < 64 and 0 <= y < 64:
+            img.putpixel((ox + x, oy + y), c)
+
+    # Wider eyes (add extra row above for raised brows)
+    # Left eye — 5px wide
+    p(21, 17, ed); p(22, 17, ed); p(23, 17, ed); p(24, 17, ed); p(25, 17, ed); p(26, 17, ed)
+    p(21, 18, ed); p(22, 18, ed); p(23, 18, ed); p(24, 18, ed); p(25, 18, ed); p(26, 18, ed)
+    p(21, 19, ed); p(22, 19, ew); p(23, 19, ew); p(24, 19, ew); p(25, 19, ei); p(26, 19, ed)
+    p(21, 20, ed); p(22, 20, ew); p(23, 20, ew); p(24, 20, ei); p(25, 20, ed); p(26, 20, ed)
+    # Right eye — 5px wide
+    p(36, 17, ed); p(37, 17, ed); p(38, 17, ed); p(39, 17, ed); p(40, 17, ed); p(41, 17, ed)
+    p(36, 18, ed); p(37, 18, ed); p(38, 18, ed); p(39, 18, ed); p(40, 18, ed); p(41, 18, ed)
+    p(36, 19, ed); p(37, 19, ei); p(38, 19, ew); p(39, 19, ew); p(40, 19, ew); p(41, 19, ed)
+    p(36, 20, ed); p(37, 20, ed); p(38, 20, ei); p(39, 20, ew); p(40, 20, ew); p(41, 20, ed)
+
     # Open mouth (O shape)
     for x in range(29, 35):
-        p(x, 25, s1)  # clear
-    p(30, 25, ed); p(31, 25, ed); p(32, 25, ed); p(33, 25, ed)
-    p(30, 26, ed); p(31, 26, s3); p(32, 26, s3); p(33, 26, ed)
+        p(x, 27, s1)  # clear default mouth
     p(30, 27, ed); p(31, 27, ed); p(32, 27, ed); p(33, 27, ed)
+    p(30, 28, ed); p(31, 28, s3); p(32, 28, s3); p(33, 28, ed)
+    p(30, 29, ed); p(31, 29, ed); p(32, 29, ed); p(33, 29, ed)
 
 
 def generate_portrait_sheet():
     """Generate 128x128 portrait sheet (2x2 grid of 64x64).
-    Top-left: default, Top-right: happy
-    Bottom-left: pensive, Bottom-right: surprised
+    Top-left: default    Top-right: happy
+    Bottom-left: pensive Bottom-right: surprised
     """
     img = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
 
-    generate_portrait_default(img, 0, 0)       # top-left
-    generate_portrait_happy(img, 64, 0)         # top-right
-    generate_portrait_pensive(img, 0, 64)       # bottom-left
-    generate_portrait_surprised(img, 64, 64)    # bottom-right
+    generate_portrait_default(img, 0, 0)
+    generate_portrait_happy(img, 64, 0)
+    generate_portrait_pensive(img, 0, 64)
+    generate_portrait_surprised(img, 64, 64)
 
     return img
 
-
-# === MAIN ===
+# ═══════════════════════════════════════════════════════════════════
+# MAIN — generate, save, verify
+# ═══════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import os
     import shutil
