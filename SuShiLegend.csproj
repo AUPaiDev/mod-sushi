@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="StardewModdingAPI">
+      <HintPath>$(HOME)/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/StardewModdingAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Stardew Valley">
+      <HintPath>$(HOME)/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Stardew Valley.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MonoGame.Framework">
+      <HintPath>$(HOME)/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/MonoGame.Framework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="assets/**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="CopyToMods" AfterTargets="Build">
+    <PropertyGroup>
+      <ModDeployDir>$(HOME)/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/Mods/SuShiLegend</ModDeployDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(ModDeployDir)" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).dll" DestinationFolder="$(ModDeployDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)manifest.json" DestinationFolder="$(ModDeployDir)" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <AssetFiles Include="$(ProjectDir)assets/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AssetFiles)" DestinationFiles="@(AssetFiles->'$(ModDeployDir)/assets/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

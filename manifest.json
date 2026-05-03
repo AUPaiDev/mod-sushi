@@ -1,0 +1,11 @@
+{
+  "Name": "西湖遗梦 (West Lake Legacy)",
+  "Author": "tauwoo",
+  "Version": "1.0.0",
+  "Description": "苏轼在西湖执政期间的故事。三位北宋灵魂出现在星露谷——诗人苏轼、才女朝云、禅僧佛印，带来诗词、美食与禅意。",
+  "UniqueId": "tauwoo.SuShiLegend",
+  "EntryDll": "SuShiLegend.dll",
+  "MinimumApiVersion": "4.0.0",
+  "Dependencies": [],
+  "UpdateKeys": []
+}
