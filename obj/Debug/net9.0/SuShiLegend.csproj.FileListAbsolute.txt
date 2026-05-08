@@ -1,5 +1,0 @@
-/Users/tauwoo/Documents/code/src/game/mod-sushi/obj/Debug/net9.0/SuShiLegend.csproj.AssemblyReference.cache
-/Users/tauwoo/Documents/code/src/game/mod-sushi/obj/Debug/net9.0/SuShiLegend.GeneratedMSBuildEditorConfig.editorconfig
-/Users/tauwoo/Documents/code/src/game/mod-sushi/obj/Debug/net9.0/SuShiLegend.AssemblyInfoInputs.cache
-/Users/tauwoo/Documents/code/src/game/mod-sushi/obj/Debug/net9.0/SuShiLegend.AssemblyInfo.cs
-/Users/tauwoo/Documents/code/src/game/mod-sushi/obj/Debug/net9.0/SuShiLegend.csproj.CoreCompileInputs.cache

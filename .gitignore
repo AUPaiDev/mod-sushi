@@ -1,0 +1,33 @@
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# NuGet
+*.nupkg
+.nuget/
+
+# macOS
+.DS_Store
+
+# Stardew SpriteExtractor 子项目输出
+tools/SpriteExtractor/bin/
+tools/SpriteExtractor/obj/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Claude Code 本地设置（keep agents/, keep CLAUDE.md）
+.claude/settings.local.json
