@@ -1,0 +1,10 @@
+{
+    "Name": "Sprite Extractor",
+    "Author": "dev",
+    "Version": "1.0.0",
+    "Description": "Extracts NPC sprites to PNG on save load or F8 press",
+    "UniqueID": "dev.spriteextractor",
+    "EntryDll": "SpriteExtractor.dll",
+    "MinimumApiVersion": "3.0.0",
+    "UpdateKeys": []
+}
