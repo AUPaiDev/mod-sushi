@@ -6,7 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**/*.cs" />
+    <Compile Include="ModEntry.cs" />
+    <Compile Include="Framework/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
